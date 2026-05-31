@@ -1,4 +1,4 @@
-"""
+\"""
 RTConnect Backend - Main Server
 Mendukung PostgreSQL (production) dan SQLite (lokal)
 
@@ -8,11 +8,13 @@ Jalankan lokal (SQLite):
 Jalankan dengan PostgreSQL:
   DATABASE_URL=postgresql://user:pass@host/db python server.py
 
-Deploy ke Render:
+Deploy ke PythonAnywhere / Render:
   gunicorn -w 2 -b 0.0.0.0:$PORT server:app
 """
 import os
-from flask import Flask, jsonify
+from dotenv import load_dotenv
+load_dotenv()
+from flask import Flask, jsonify, send_file
 from flask_cors import CORS
 
 # ── Inisialisasi DB jika SQLite dan belum ada ───────────────
@@ -50,16 +52,12 @@ app.register_blueprint(keamanan_bp)
 app.register_blueprint(dashboard_bp)
 
 
+# ── Serve Frontend ───────────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 @app.route("/")
 def index():
-    db_mode = "PostgreSQL" if DATABASE_URL else "SQLite"
-    return jsonify({
-        "app"    : "RTConnect API",
-        "rt"     : "RT 01 / RW 12 Kp. Maleber",
-        "version": "2.0.0",
-        "db"     : db_mode,
-        "status" : "running",
-    })
+    return send_file(os.path.join(BASE_DIR, "/home/torik210/rtconnect-backend/index.html"))
 
 
 @app.route("/api/health")

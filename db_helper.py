@@ -12,19 +12,19 @@ Semua route tetap menggunakan pola lama:
 
 Helper ini membungkus kedua engine agar sintaks tetap sama.
 """
+
 import os
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 
 class CursorWrapper:
-    """Membungkus psycopg2 cursor agar .fetchone() dan .fetchall() return dict."""
+    """Membungkus cursor agar .fetchone() dan .fetchall() return dict."""
     def __init__(self, cursor):
         self._cur = cursor
 
     @property
     def lastrowid(self):
-        # PostgreSQL: pakai RETURNING id
         try:
             row = self._cur.fetchone()
             if row:
@@ -58,10 +58,8 @@ class ConnectionWrapper:
         # Konversi ? ke %s untuk PostgreSQL
         pg_sql = sql.replace("?", "%s")
         # Handle INSERT ... RETURNING untuk lastrowid
-        if pg_sql.strip().upper().startswith("INSERT"):
-            # Tambah RETURNING id jika belum ada
-            if "RETURNING" not in pg_sql.upper():
-                pg_sql = pg_sql.rstrip().rstrip(";") + " RETURNING id"
+        if pg_sql.strip().upper().startswith("INSERT") and "RETURNING" not in pg_sql.upper():
+            pg_sql = pg_sql.rstrip().rstrip(";") + " RETURNING id"
         self._cursor.execute(pg_sql, params)
         return CursorWrapper(self._cursor)
 
@@ -71,6 +69,42 @@ class ConnectionWrapper:
     def close(self):
         self._cursor.close()
         self._conn.close()
+
+
+class SQLiteWrapper:
+    """Membungkus koneksi SQLite agar interface-nya sama dengan PostgreSQL wrapper."""
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=()):
+        cur = self._conn.execute(sql, params)
+        return SQLiteCursorWrapper(cur)
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+
+class SQLiteCursorWrapper:
+    """Membungkus cursor SQLite agar .fetchone() dan .fetchall() return dict."""
+    def __init__(self, cursor):
+        self._cur = cursor
+
+    @property
+    def lastrowid(self):
+        return self._cur.lastrowid
+
+    def fetchone(self):
+        row = self._cur.fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def fetchall(self):
+        rows = self._cur.fetchall()
+        return [dict(r) for r in rows]
 
 
 def get_db():
@@ -84,23 +118,7 @@ def get_db():
     else:
         import sqlite3
         DB_PATH = os.environ.get("DB_PATH", "rtconnect.db")
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
-        # Patch fetchone/fetchall to return dict
-        original_execute = conn.execute
-        def execute_wrapper(sql, params=()):
-            cur = original_execute(sql, params)
-            original_fetchone = cur.fetchone
-            original_fetchall = cur.fetchall
-            def fetchone():
-                row = original_fetchone()
-                return dict(row) if row else None
-            def fetchall():
-                rows = original_fetchall()
-                return [dict(r) for r in rows]
-            cur.fetchone = fetchone
-            cur.fetchall = fetchall
-            return cur
-        conn.execute = execute_wrapper
-        return conn
+        return SQLiteWrapper(conn)
