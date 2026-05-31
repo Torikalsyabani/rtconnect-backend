@@ -57,7 +57,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @app.route("/")
 def index():
-    return send_file(os.path.join(BASE_DIR, "/home/torik210/rtconnect-backend/index.html"))
+    return send_file(os.path.join(BASE_DIR, "index.html"))
 
 
 @app.route("/api/health")
