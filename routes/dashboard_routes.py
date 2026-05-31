@@ -28,7 +28,7 @@ def admin_summary():
             SUM(CASE WHEN status='menunggu_verifikasi' THEN 1 ELSE 0 END) AS menunggu,
             SUM(CASE WHEN status='lunas' THEN jumlah ELSE 0 END) AS terkumpul
         FROM iuran
-        WHERE periode = strftime('%Y-%m', 'now')
+        WHERE periode = TO_CHAR(NOW(), 'YYYY-MM')
     """).fetchone()
 
     # Pengajuan surat pending
