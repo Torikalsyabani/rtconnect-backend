@@ -1,4 +1,4 @@
-\"""
+"""
 RTConnect Backend - Main Server
 Mendukung PostgreSQL (production) dan SQLite (lokal)
 
