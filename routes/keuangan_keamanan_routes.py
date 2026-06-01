@@ -105,7 +105,7 @@ def summary_keuangan():
 
     per_bulan = db.execute("""
         SELECT
-            TO_CHAR(tanggal, 'YYYY-MM') AS bulan,
+            TO_CHAR(tanggal::DATE, 'YYYY-MM') AS bulan,
             SUM(CASE WHEN jenis='pemasukan'   THEN jumlah ELSE 0 END) AS masuk,
             SUM(CASE WHEN jenis='pengeluaran' THEN jumlah ELSE 0 END) AS keluar
         FROM keuangan
